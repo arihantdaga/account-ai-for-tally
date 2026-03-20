@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "description": "Tally Prime MCP (Model Context Protocol) Server implementation to feed Tally Prime ERP data to popular LLM like Claude, ChatGPT supporting MCP",
   "main": "dist/server.mjs",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write src/",
+    "lint": "biome check src/",
+    "check": "biome check --write src/"
   },
   "repository": {
     "type": "git",
@@ -17,16 +24,18 @@
   },
   "homepage": "https://github.com/dhananjay1405/tally-mcp-server#readme",
   "dependencies": {
-    "@duckdb/node-api": "^1.4.1-r.4",
-    "@modelcontextprotocol/sdk": "^1.18.2",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "fast-xml-parser": "^5.2.5",
-    "nunjucks": "^3.2.4"
+    "@duckdb/node-api": "1.4.1-r.4",
+    "@modelcontextprotocol/sdk": "1.18.2",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "fast-xml-parser": "5.2.5",
+    "nunjucks": "3.2.4"
   },
   "devDependencies": {
-    "@types/express": "^5.0.3",
-    "@types/node": "^24.2.1",
-    "@types/nunjucks": "^3.2.6"
+    "@biomejs/biome": "^2.4.8",
+    "@types/express": "5.0.3",
+    "@types/node": "24.2.1",
+    "@types/nunjucks": "3.2.6",
+    "typescript": "5.9.3"
   }
 }

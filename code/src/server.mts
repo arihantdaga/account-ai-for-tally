@@ -1,11 +1,13 @@
-import path from 'node:path';
-import express from 'express';
-import crypto from 'node:crypto';
-import dotenv from 'dotenv'
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
-import { registerMcpServer } from './mcp.mjs'
+import dotenv from 'dotenv';
 
+dotenv.config({ override: true, quiet: true });
+
+import crypto from 'node:crypto';
+import path from 'node:path';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import express from 'express';
+import { registerMcpServer } from './mcp.mjs';
 
 const mcpPort = parseInt(process.env.PORT || '3000');
 const mcpDomain = process.env.MCP_DOMAIN || 'http://localhost:3000';
@@ -51,7 +53,11 @@ const generateSecureToken = (bytes: number = 32): string => {
 };
 
 // Helper function to verify PKCE
-const verifyPKCE = (verifier: string, challenge: string, method: string): boolean => {
+const verifyPKCE = (
+  verifier: string,
+  challenge: string,
+  method: string,
+): boolean => {
   if (method !== 'S256') return false;
 
   const hash = crypto.createHash('sha256').update(verifier).digest('base64url');
@@ -75,12 +81,13 @@ setInterval(() => {
       delete accessTokens[token];
     }
   }
-
 }, 60000); // Run every minute
 
-
 // Handle POST requests for client-to-server communication
-const handleMcpRequest = async (req: express.Request, res: express.Response) => {
+const handleMcpRequest = async (
+  req: express.Request,
+  res: express.Response,
+) => {
   const handleUnauthorized = () => {
     res.status(401).json({
       jsonrpc: '2.0',
@@ -95,7 +102,7 @@ const handleMcpRequest = async (req: express.Request, res: express.Response) => 
   // Check for authentication header Bearer
   const authHeader = req.headers['authorization'] as string | undefined;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    handleUnauthorized()
+    handleUnauthorized();
     return;
   }
 
@@ -108,7 +115,6 @@ const handleMcpRequest = async (req: express.Request, res: express.Response) => 
     return;
   }
 
-
   // Check for existing session ID
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   let transport: StreamableHTTPServerTransport;
@@ -116,8 +122,7 @@ const handleMcpRequest = async (req: express.Request, res: express.Response) => 
   if (sessionId && transports[sessionId]) {
     // Reuse existing transport
     transport = transports[sessionId];
-  }
-  else if (!sessionId && isInitializeRequest(req.body)) {
+  } else if (!sessionId && isInitializeRequest(req.body)) {
     // New initialization request
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => crypto.randomUUID(),
@@ -140,9 +145,7 @@ const handleMcpRequest = async (req: express.Request, res: express.Response) => 
 
     const mcpServer = await registerMcpServer(); // Register the MCP server
     await mcpServer.connect(transport); // Connect the MCP server to the transport
-
-  }
-  else {
+  } else {
     // Invalid request
     res.status(400).json({
       jsonrpc: '2.0',
@@ -157,12 +160,15 @@ const handleMcpRequest = async (req: express.Request, res: express.Response) => 
 
   // Handle the request
   await transport.handleRequest(req, res, req.body);
-}
+};
 
 app.post('/mcp', handleMcpRequest);
 
 // Reusable handler for GET and DELETE requests
-const handleSessionRequest = async (req: express.Request, res: express.Response) => {
+const handleSessionRequest = async (
+  req: express.Request,
+  res: express.Response,
+) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   if (!sessionId || !transports[sessionId]) {
     res.status(400).send('Invalid or missing session ID');
@@ -179,37 +185,49 @@ app.get('/mcp', handleSessionRequest);
 // Handle DELETE requests for session termination
 app.delete('/mcp', handleSessionRequest);
 
-const handleOAuthProtectedResource = (req: express.Request, res: express.Response) => {
+const handleOAuthProtectedResource = (
+  req: express.Request,
+  res: express.Response,
+) => {
   res.status(200).json({
     resource: `${mcpDomain}/mcp`,
     authorization_servers: [`${mcpDomain}`],
     bearer_methods_supported: ['header'],
-    scopes_supported: ['email']
+    scopes_supported: ['email'],
   });
-}
+};
 
 app.get('/.well-known/oauth-protected-resource', handleOAuthProtectedResource);
-app.get('/.well-known/oauth-protected-resource/mcp', handleOAuthProtectedResource);
+app.get(
+  '/.well-known/oauth-protected-resource/mcp',
+  handleOAuthProtectedResource,
+);
 
-const handleOAuthAuthorizationServer = (req: express.Request, res: express.Response) => {
-  res.status(200).json(
-    {
-      issuer: mcpDomain,
-      authorization_endpoint: `${mcpDomain}/authorize`,
-      token_endpoint: `${mcpDomain}/token`,
-      registration_endpoint: `${mcpDomain}/register`,
-      response_types_supported: ['code'],
-      response_modes_supported: ['query'],
-      grant_types_supported: ['authorization_code'],
-      token_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
-      code_challenge_methods_supported: ['S256']
-    }
-  );
-}
+const handleOAuthAuthorizationServer = (
+  req: express.Request,
+  res: express.Response,
+) => {
+  res.status(200).json({
+    issuer: mcpDomain,
+    authorization_endpoint: `${mcpDomain}/authorize`,
+    token_endpoint: `${mcpDomain}/token`,
+    registration_endpoint: `${mcpDomain}/register`,
+    response_types_supported: ['code'],
+    response_modes_supported: ['query'],
+    grant_types_supported: ['authorization_code'],
+    token_endpoint_auth_methods_supported: [
+      'client_secret_basic',
+      'client_secret_post',
+    ],
+    code_challenge_methods_supported: ['S256'],
+  });
+};
 
 // Handle OAuth Authorization Server
-app.get('/.well-known/oauth-authorization-server', handleOAuthAuthorizationServer);
-
+app.get(
+  '/.well-known/oauth-authorization-server',
+  handleOAuthAuthorizationServer,
+);
 
 app.post('/register', (req, res) => {
   const clientId = generateSecureToken(16);
@@ -218,21 +236,23 @@ app.post('/register', (req, res) => {
   const redirectUris = req.body['redirect_uris'] || [];
 
   if (!Array.isArray(redirectUris) || redirectUris.length === 0) {
-    return res.status(400).json({ error: 'redirect_uris must be a non-empty array' });
+    return res
+      .status(400)
+      .json({ error: 'redirect_uris must be a non-empty array' });
   }
 
   registeredClients[clientId] = {
     client_id: clientId,
     client_name: clientName,
     client_secret: clientSecret,
-    redirect_uris: redirectUris
+    redirect_uris: redirectUris,
   };
 
   res.status(200).json({
     client_id: clientId,
     client_name: clientName,
     client_secret: clientSecret,
-    redirect_uris: redirectUris
+    redirect_uris: redirectUris,
   });
 });
 
@@ -248,27 +268,24 @@ app.post('/authorize', (req, res) => {
   }
 
   // Validate client credentials
-  let isValidated = (password == authPassword);
+  const isValidated = password == authPassword;
 
   if (isValidated) {
     // Generate authorization code
     const code = generateSecureToken(32);
-    
+
     authorizationCodes[code] = {
       code,
       client_id: clientId,
       redirect_uri: redirectUri,
       code_challenge: codeChallenge,
       code_challenge_method: codeChallengeMethod,
-      expires_at: Date.now() + 600000 // 10 minutes
+      expires_at: Date.now() + 600000, // 10 minutes
     };
     res.status(200).json({ status: isValidated, code });
-    
-  }
-  else {
+  } else {
     res.status(200).json({ status: isValidated, code: undefined });
   }
-
 });
 
 app.get('/authorize', async (req, res) => {
@@ -282,21 +299,21 @@ app.get('/authorize', async (req, res) => {
   if (!clientId || !redirectUri || !codeChallenge || !responseType) {
     return res.status(400).json({
       error: 'invalid_request',
-      error_description: 'Missing required parameters'
+      error_description: 'Missing required parameters',
     });
   }
 
   if (responseType !== 'code') {
     return res.status(400).json({
       error: 'unsupported_response_type',
-      error_description: 'Only "code" response type is supported'
+      error_description: 'Only "code" response type is supported',
     });
   }
 
   if (codeChallengeMethod !== 'S256') {
     return res.status(400).json({
       error: 'invalid_request',
-      error_description: 'Only S256 code challenge method is supported'
+      error_description: 'Only S256 code challenge method is supported',
     });
   }
 
@@ -305,7 +322,7 @@ app.get('/authorize', async (req, res) => {
   if (!client) {
     return res.status(400).json({
       error: 'invalid_client',
-      error_description: 'Unknown client_id'
+      error_description: 'Unknown client_id',
     });
   }
 
@@ -313,32 +330,36 @@ app.get('/authorize', async (req, res) => {
   if (!client.redirect_uris.includes(redirectUri)) {
     return res.status(400).json({
       error: 'invalid_request',
-      error_description: 'Invalid redirect_uri'
+      error_description: 'Invalid redirect_uri',
     });
   }
 
-  res.status(200).header('Content-Type', 'text/html').sendFile(path.join(__dirname, '../authorize.html'));
+  res
+    .status(200)
+    .header('Content-Type', 'text/html')
+    .sendFile(path.join(__dirname, '../authorize.html'));
 });
 
 app.post('/token', (req, res) => {
-
   const grantType = req.body['grant_type'];
   const code = req.body['code'];
   const redirectUri = req.body['redirect_uri'];
   let clientId = req.body['client_id'];
   const codeVerifier = req.body['code_verifier'];
 
-  if(!clientId) {
+  if (!clientId) {
     //check for client authentication in Authorization header
     const authHeader = req.headers['authorization'] as string | undefined;
     if (!authHeader || !authHeader.startsWith('Basic ')) {
       return res.status(401).json({
         error: 'invalid_client',
-        error_description: 'No client authentication provided'
+        error_description: 'No client authentication provided',
       });
     }
     const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    const credentials = Buffer.from(base64Credentials, 'base64').toString(
+      'utf-8',
+    );
     const [authClientId, authClientSecret] = credentials.split(':');
     clientId = authClientId;
   }
@@ -347,7 +368,7 @@ app.post('/token', (req, res) => {
   if (grantType !== 'authorization_code') {
     return res.status(400).json({
       error: 'unsupported_grant_type',
-      error_description: 'Only authorization_code grant type is supported'
+      error_description: 'Only authorization_code grant type is supported',
     });
   }
 
@@ -355,7 +376,7 @@ app.post('/token', (req, res) => {
   if (!code || !redirectUri || !clientId || !codeVerifier) {
     return res.status(400).json({
       error: 'invalid_request',
-      error_description: 'Missing required parameters'
+      error_description: 'Missing required parameters',
     });
   }
 
@@ -364,7 +385,7 @@ app.post('/token', (req, res) => {
   if (!authCode) {
     return res.status(400).json({
       error: 'invalid_grant',
-      error_description: 'Invalid or expired authorization code'
+      error_description: 'Invalid or expired authorization code',
     });
   }
 
@@ -373,23 +394,32 @@ app.post('/token', (req, res) => {
     delete authorizationCodes[code];
     return res.status(400).json({
       error: 'invalid_grant',
-      error_description: 'Authorization code expired'
+      error_description: 'Authorization code expired',
     });
   }
 
   // Validate client and redirect URI match
-  if (authCode.client_id !== clientId || authCode.redirect_uri !== redirectUri) {
+  if (
+    authCode.client_id !== clientId ||
+    authCode.redirect_uri !== redirectUri
+  ) {
     return res.status(400).json({
       error: 'invalid_grant',
-      error_description: 'Authorization code mismatch'
+      error_description: 'Authorization code mismatch',
     });
   }
 
   // Verify PKCE
-  if (!verifyPKCE(codeVerifier, authCode.code_challenge, authCode.code_challenge_method)) {
+  if (
+    !verifyPKCE(
+      codeVerifier,
+      authCode.code_challenge,
+      authCode.code_challenge_method,
+    )
+  ) {
     return res.status(400).json({
       error: 'invalid_grant',
-      error_description: 'Invalid code verifier'
+      error_description: 'Invalid code verifier',
     });
   }
 
@@ -403,14 +433,14 @@ app.post('/token', (req, res) => {
   accessTokens[accessToken] = {
     token: accessToken,
     client_id: clientId,
-    expires_at: Date.now() + (expiresIn * 1000)
+    expires_at: Date.now() + expiresIn * 1000,
   };
 
   res.json({
     access_token: accessToken,
     token_type: 'Bearer',
     expires_in: expiresIn,
-    refresh_token: accessToken
+    refresh_token: accessToken,
   });
 });
 
