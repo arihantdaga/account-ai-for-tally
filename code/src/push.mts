@@ -98,7 +98,9 @@ ${parent}${address}${country}${state}${mobile}${gstin}
 }
 
 function buildDeleteLedgerXML(params: Record<string, any>): string {
-  return `<LEDGER NAME="${esc(params.ledgerName)}" ACTION="Delete"></LEDGER>`;
+  return `<LEDGER NAME="${esc(params.ledgerName)}" ACTION="DELETE">
+<NAME>${esc(params.ledgerName)}</NAME>
+</LEDGER>`;
 }
 
 function buildCreateGroupXML(params: Record<string, any>): string {
@@ -111,7 +113,8 @@ function buildCreateGroupXML(params: Record<string, any>): string {
       ? `<ISADDABLE>${params.isAddable ? 'Yes' : 'No'}</ISADDABLE>`
       : '';
 
-  return `<GROUP NAME="${esc(params.groupName)}" ACTION="Create">
+  return `<GROUP Action="Create">
+<NAME>${esc(params.groupName)}</NAME>
 <PARENT>${esc(params.parentGroup)}</PARENT>
 ${billWise}${addable}
 </GROUP>`;
@@ -134,7 +137,9 @@ ${elements.join('\n')}
 }
 
 function buildDeleteGroupXML(params: Record<string, any>): string {
-  return `<GROUP NAME="${esc(params.groupName)}" ACTION="Delete"></GROUP>`;
+  return `<GROUP NAME="${esc(params.groupName)}" ACTION="DELETE">
+<NAME>${esc(params.groupName)}</NAME>
+</GROUP>`;
 }
 
 function buildCreateStockItemXML(params: Record<string, any>): string {
@@ -187,11 +192,13 @@ ${openingBalance}${gstDetails}
 }
 
 function buildDeleteStockItemXML(params: Record<string, any>): string {
-  return `<STOCKITEM NAME="${esc(params.stockItemName)}" ACTION="Delete"></STOCKITEM>`;
+  return `<STOCKITEM NAME="${esc(params.stockItemName)}" ACTION="DELETE">
+<NAME>${esc(params.stockItemName)}</NAME>
+</STOCKITEM>`;
 }
 
 function buildCreateUnitXML(params: Record<string, any>): string {
-  const isSimple = params.isSimpleUnit ? 'true' : 'false';
+  const isSimple = params.isSimpleUnit ? 'Yes' : 'No';
   return `<UNIT Action="Create">
 <ISSIMPLEUNIT>${isSimple}</ISSIMPLEUNIT>
 <NAME>${esc(params.name)}</NAME>
@@ -199,7 +206,9 @@ function buildCreateUnitXML(params: Record<string, any>): string {
 }
 
 function buildDeleteUnitXML(params: Record<string, any>): string {
-  return `<UNIT NAME="${esc(params.unitName)}" ACTION="Delete"></UNIT>`;
+  return `<UNIT NAME="${esc(params.unitName)}" ACTION="DELETE">
+<NAME>${esc(params.unitName)}</NAME>
+</UNIT>`;
 }
 
 // --- Voucher XML Builders ---

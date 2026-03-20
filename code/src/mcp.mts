@@ -15,7 +15,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'query-database',
     {
       title: 'Query Database',
-      description: `executes sql query on DuckDB in-memory database for querying cached Tally Prime report data in table generated as output by other tools (in tableID property from tool output response). These tables are temporary and will be dropped after 15 minutes automatically. Use this tool to run complex analytical queries to aggregate, filter, sort results. Returns output in tab separated format`,
+      description: `Run SQL queries on cached Tally data. Other tools (trial-balance, ledger-account, etc.) cache their results in temporary DuckDB tables and return a tableID. Use this tool to query those tables with standard SQL for aggregation, filtering, sorting, and joins. Tables auto-expire after 15 minutes. Returns tab-separated output.`,
       inputSchema: {
         sql: z
           .string()
@@ -38,7 +38,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'list-master',
     {
       title: 'List Masters',
-      description: `fetches list of masters from Tally Prime collection e.g. group, ledger, vouchertype, unit, godown, stockgroup, stockitem, costcategory, costcentre, attendancetype, company, currency, gstin, gstclassification returns output in tab separated format`,
+      description: `List all master records of a given type from Tally. Use this to look up valid names before creating vouchers or other masters. Collections: group (account groups), ledger (GL accounts/parties), vouchertype, unit (UOM), godown (warehouse), stockgroup, stockitem (inventory), costcategory, costcentre, attendancetype, company, currency, gstin, gstclassification. Returns tab-separated list of names.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -93,7 +93,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'chart-of-accounts',
     {
       title: 'Chart of Accounts',
-      description: `fetches chart of accounts or group structure / GL hierarchywith fields group_name, group_parent, bs_pl, dr_cr, affects_gross_profit. the column bs_pl will have values BS = Balance Sheet / PL = Profit Loss. Column dr_cr as value D = Debit / C = Credit. columns group and parent are tree structure represented in flat format. The column affects_gross_profit has values Y = Yes / N = No, it is used to determine if ledger under this group will affect gross profit or not. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch the full chart of accounts (group hierarchy) from Tally. Returns fields: group_name, group_parent, bs_pl (BS=Balance Sheet, PL=Profit & Loss), dr_cr (D=Debit, C=Credit), affects_gross_profit (Y/N). The group/parent columns form a tree in flat format. Fetch this before using trial-balance, profit-loss, or balance-sheet to understand the GL structure. Result is cached in a DuckDB table — use query-database with the returned tableID for analysis.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -133,7 +133,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'trial-balance',
     {
       title: 'Trial Balance',
-      description: `fetches trial balance with fields ledger_name, group_name, opening_balance, net_debit, net_credit, closing_balance. kindly fetch data from chart-of-accounts tool to pull group hierarchy before calling this tool. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch trial balance for a date range. Returns fields: ledger_name, group_name, opening_balance, net_debit, net_credit, closing_balance. Tip: fetch chart-of-accounts first to understand group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -178,7 +178,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'profit-loss',
     {
       title: 'Profit and Loss',
-      description: `fetches profit and loss statement with fields like ledger_name, group_name, amount. amount negative is debit or expense and positive is credit or income. kindly fetch data from chart-of-accounts tool to pull group hierarchy before calling this tool. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch Profit & Loss statement for a date range. Returns fields: ledger_name, group_name, amount. Negative amount = expense (debit), positive = income (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -223,7 +223,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'balance-sheet',
     {
       title: 'Balance Sheet',
-      description: `fetches balance sheet with fields like ledger_name, group_name, closing_balance. closing balance negative is debit or asset and positive is credit or liability. kindly fetch data from chart-of-accounts tool to pull group hierarchy before calling this tool. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch Balance Sheet as on a date. Returns fields: ledger_name, group_name, closing_balance. Negative closing_balance = asset (debit), positive = liability (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -264,7 +264,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-summary',
     {
       title: 'Stock Summary',
-      description: `fetches stock item summary with fields name, parent, opening_quantity, opening_value, inward_quantity, inward_value, outward_quantity, outward_value, closing_quantity, closing_value, returns output cached in DuckDB in-memory table (specified in tableID property). synonyms (name=stock item / parent=stock group) Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch inventory stock summary for a date range. Returns fields: name (stock item), parent (stock group), opening_quantity, opening_value, inward_quantity, inward_value, outward_quantity, outward_value, closing_quantity, closing_value. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -309,7 +309,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'ledger-balance',
     {
       title: 'Ledger Balance',
-      description: `fetches ledger closing balance as on date, negative is debit and positive is credit`,
+      description: `Fetch a single ledger's closing balance as on a date. Returns a number: negative = debit balance, positive = credit balance. Use list-master with collection=ledger to validate the ledger name first.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -355,7 +355,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-item-balance',
     {
       title: 'Stock Item Balance',
-      description: `fetches stock item remaining quantity balance as on date`,
+      description: `Fetch a single stock item's remaining quantity balance as on a date. Returns a number. Use list-master with collection=stockitem to validate the item name first.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -401,7 +401,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'bills-outstanding',
     {
       title: 'Bills Outstanding',
-      description: `fetches pending overdue outstanding bills receivable or payable as on date with fields bill_date,reference_number,outstanding_amount,party_name,overdue_days. outstanding_amount = Debit is negative and Credit is positive. party_name = ledger_name. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch outstanding bills (receivable or payable) as on a date. Returns fields: bill_date, reference_number, outstanding_amount (negative=debit, positive=credit), party_name (ledger name), overdue_days. Use nature=receivable for money owed TO you, nature=payable for money you OWE. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -446,7 +446,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'ledger-account',
     {
       title: 'Ledger Account',
-      description: `fetches GL ledger account statement with voucher level details containing fields date, voucher_type, voucher_number, party_name, amount, narration, master_id. amount = debit is negative and credit is positive. party_name = ledger_name. master_id can be used with cancel-voucher tool. returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch detailed ledger account statement (voucher-level transactions) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, amount (negative=debit, positive=credit), narration, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Use list-master with collection=ledger to validate the ledger name. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -503,7 +503,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-item-account',
     {
       title: 'Stock Item Account',
-      description: `fetches GL stock item account statement with voucher level details containing fields date, voucher_type, voucher_number, party_name, quantity, amount, narration, tracking_number, voucher_category, master_id. party_name = ledger_name. quantity = inward as positive and outward as negative. amount = debit is negative and credit is positive, narration = notes / remarks. for calculating closing balance of quantity, consider rows with tracking_number as empty as it is, but for rows with tracking_number having text value, then duplicate rows need to be removed by preparing intermediate output with aggregation of tracking_number and voucher_category with sum of quantity and then comparing quantity of Receipt Note with Purchase and Delivery Note with Sales to identify and remove the rows with Receipt Note and Delivery Note if they are found to be tracked fully / partially . returns output cached in DuckDB in-memory table (specified in tableID property). Use query-database tool to run SQL queries against that table for further analysis`,
+      description: `Fetch detailed stock item account statement (voucher-level inventory movements) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, quantity (positive=inward, negative=outward), amount (negative=debit, positive=credit), narration, tracking_number, voucher_category, master_id. Note: rows with tracking_number values may have duplicates from Receipt Note/Delivery Note tracking — aggregate by tracking_number and voucher_category to deduplicate. Use list-master with collection=stockitem to validate the item name. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -563,7 +563,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Create Ledger',
       description:
-        'Creates a new ledger account in Tally Prime. Use list-master with collection as group to validate the parent group name before calling this tool.',
+        'Create a new ledger (GL account, party, expense head, etc.) in Tally. The parent group determines the ledger type — e.g. Sundry Debtors for customers, Sundry Creditors for vendors, Direct Expenses for costs, Sales Accounts for revenue. Always validate parent group name using list-master with collection=group first.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         name: z.string().describe('ledger name'),
@@ -599,7 +599,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Delete Ledger',
       description:
-        'Deletes a ledger from Tally Prime. The ledger must not have any transactions. Validate ledger name using list-master with collection as ledger.',
+        'Delete a ledger from Tally. Only works if the ledger has no transactions. Validate exact name using list-master with collection=ledger first.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         ledgerName: z.string().describe('exact ledger name to delete'),
@@ -629,7 +629,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Create Group',
       description:
-        'Creates a new group in Tally Prime chart of accounts. Validate parent group using list-master with collection as group.',
+        'Create a new account group in Tally chart of accounts. Groups organize ledgers hierarchically (e.g. a "North Region Debtors" sub-group under Sundry Debtors). Validate parent group using list-master with collection=group.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         groupName: z.string().describe('name for the new group'),
@@ -664,7 +664,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Update Group',
       description:
-        'Updates an existing group in Tally Prime. Validate group name using list-master with collection as group.',
+        'Update properties of an existing account group (e.g. change parent, enable bill-wise tracking). Validate group name using list-master with collection=group.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         groupName: z.string().describe('name of the group to update'),
@@ -699,7 +699,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Delete Group',
       description:
-        'Deletes a group from Tally Prime. The group must be empty (no ledgers or sub-groups). Validate group name using list-master with collection as group.',
+        'Delete an account group from Tally. The group must have no ledgers or sub-groups under it. Validate name using list-master with collection=group.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         groupName: z.string().describe('exact group name to delete'),
@@ -729,7 +729,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Create Stock Item',
       description:
-        'Creates a new stock item in Tally Prime. Validate base unit using list-master with collection as unit.',
+        'Create a new inventory stock item in Tally. Requires a base unit of measurement (e.g. Nos, Kgs). Optionally set HSN code and GST rate for tax compliance. Validate base unit exists using list-master with collection=unit — create one first if needed.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         name: z.string().describe('stock item name'),
@@ -767,7 +767,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Delete Stock Item',
       description:
-        'Deletes a stock item from Tally Prime. The stock item must not have any transactions. Validate name using list-master with collection as stockitem.',
+        'Delete a stock item from Tally. Only works if the item has no transactions. Delete stock items before deleting their unit of measurement. Validate name using list-master with collection=stockitem.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         stockItemName: z.string().describe('exact stock item name to delete'),
@@ -797,7 +797,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Create Unit',
       description:
-        'Creates a new unit of measurement in Tally Prime e.g. Nos, Kgs, Ltrs, Pcs',
+        'Create a unit of measurement in Tally (e.g. Nos, Kgs, Ltrs, Pcs, Boxes). Units are required before creating stock items. Use isSimpleUnit=true for basic units.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         name: z.string().describe('unit name e.g. Nos, Kgs, Ltrs, Pcs'),
@@ -826,7 +826,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Delete Unit',
       description:
-        'Deletes a unit of measurement from Tally Prime. The unit must not be in use by any stock item. Validate name using list-master with collection as unit.',
+        'Delete a unit of measurement from Tally. The unit must not be in use by any stock item — delete dependent stock items first. Validate name using list-master with collection=unit.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         unitName: z.string().describe('exact unit name to delete'),
@@ -858,7 +858,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Create Voucher',
       description:
-        'Creates an accounting voucher in Tally Prime. Supports all voucher types: Sales, Purchase, Payment, Receipt, Journal, Contra, Credit Note, Debit Note. Each voucher must have at least 2 ledger entries where total debits equal total credits. For debit entries set isDeemedPositive=true and amount as negative. For credit entries set isDeemedPositive=false and amount as positive. Validate ledger names using list-master with collection as ledger and voucher type using list-master with collection as vouchertype.',
+        'Create an accounting voucher (transaction) in Tally. Supported types: Sales, Purchase, Payment, Receipt, Journal, Contra, Credit Note, Debit Note. Each voucher needs at least 2 ledger entries that balance (debits = credits). Convention: debit entries have isDeemedPositive=true with negative amount; credit entries have isDeemedPositive=false with positive amount. Example: to record a purchase expense of 500 paid by cash, debit the expense ledger (-500, isDeemedPositive=true) and credit Cash (500, isDeemedPositive=false). Always validate ledger names using list-master with collection=ledger first.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         voucherType: z
@@ -912,7 +912,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Cancel Voucher',
       description:
-        'Cancels a voucher in Tally Prime using its master ID. The master ID can be obtained from ledger-account or stock-item-account tools (master_id field). Also requires the voucher type and date.',
+        'Cancel (reverse) a voucher in Tally. Requires the master_id, voucher type, and date — get these from ledger-account or stock-item-account tool results. Cancellation creates a reversal entry; the original voucher is marked cancelled but not deleted.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         masterId: z.string().describe('master ID of the voucher to cancel'),
