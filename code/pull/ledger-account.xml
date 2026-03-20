@@ -31,11 +31,11 @@
                         <SCROLLED>Vertical</SCROLLED>
                     </PART>
                     <LINE NAME="MyLine01">
-                        <FIELDS>FldDate,FldVoucherType,FldVoucherNumber,FldPartyLedger,FldAmount,FldNarration</FIELDS>
+                        <FIELDS>FldDate,FldVoucherType,FldVoucherNumber,FldPartyLedger,FldAmount,FldNarration,FldMasterID</FIELDS>
                         <XMLTAG>ROW</XMLTAG>
                     </LINE>
                     <LINE NAME="MyLineOp">
-                        <FIELDS>FldDateOp,FldVoucherTypeOp,FldVoucherNumberOp,FldPartyLedgerOp,FldAmountOp,FldNarrationOp</FIELDS>
+                        <FIELDS>FldDateOp,FldVoucherTypeOp,FldVoucherNumberOp,FldPartyLedgerOp,FldAmountOp,FldNarrationOp,FldMasterIDOp</FIELDS>
                         <XMLTAG>ROW</XMLTAG>
                     </LINE>
                     <FIELD NAME="FldDate">
@@ -85,6 +85,14 @@
                     <FIELD NAME="FldNarrationOp">
                         <SET>""</SET>
                         <XMLTAG>F06</XMLTAG>
+                    </FIELD>
+                    <FIELD NAME="FldMasterID">
+                        <SET>$MasterID</SET>
+                        <XMLTAG>F07</XMLTAG>
+                    </FIELD>
+                    <FIELD NAME="FldMasterIDOp">
+                        <SET>""</SET>
+                        <XMLTAG>F07</XMLTAG>
                     </FIELD>
                     <COLLECTION NAME="MyCollection">
                         <TYPE>Voucher</TYPE>

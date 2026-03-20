@@ -246,6 +246,11 @@
                         "identifier": "F06",
                         "name": "narration",
                         "datatype": "string"
+                    },
+                    {
+                        "identifier": "F07",
+                        "name": "master_id",
+                        "datatype": "string"
                     }
                 ]
             }
@@ -312,6 +317,11 @@
                     {
                         "identifier": "F09",
                         "name": "voucher_category",
+                        "datatype": "string"
+                    },
+                    {
+                        "identifier": "F10",
+                        "name": "master_id",
                         "datatype": "string"
                     }
                 ]
