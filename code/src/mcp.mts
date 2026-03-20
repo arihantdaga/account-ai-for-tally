@@ -912,10 +912,12 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Cancel Voucher',
       description:
-        'Cancels a voucher in Tally Prime using its master ID. The master ID can be obtained from voucher details or ledger account statements.',
+        'Cancels a voucher in Tally Prime using its master ID. The master ID can be obtained from ledger-account or stock-item-account tools (master_id field). Also requires the voucher type and date.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
         masterId: z.string().describe('master ID of the voucher to cancel'),
+        voucherType: z.string().describe('voucher type e.g. Sales, Purchase, Payment, Receipt, Journal'),
+        date: z.string().describe('voucher date in YYYY-MM-DD format'),
       },
       annotations: {
         readOnlyHint: false,

@@ -237,7 +237,11 @@ ${entries}
 }
 
 function buildCancelVoucherXML(params: Record<string, any>): string {
-  return `<VOUCHER ACTION="Cancel">
+  const voucherType = params.voucherType ? `<VOUCHERTYPENAME>${esc(params.voucherType)}</VOUCHERTYPENAME>` : '';
+  const date = params.date ? `<DATE>${params.date.replace(/-/g, '')}</DATE>` : '';
+  return `<VOUCHER ACTION="Cancel" VCHTYPE="${esc(params.voucherType || '')}">
+${date}
+${voucherType}
 <MASTERID>${esc(params.masterId)}</MASTERID>
 </VOUCHER>`;
 }
