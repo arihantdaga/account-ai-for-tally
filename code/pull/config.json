@@ -251,6 +251,11 @@
                         "identifier": "F07",
                         "name": "master_id",
                         "datatype": "string"
+                    },
+                    {
+                        "identifier": "F08",
+                        "name": "guid",
+                        "datatype": "string"
                     }
                 ]
             }
