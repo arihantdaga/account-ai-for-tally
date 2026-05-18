@@ -57,9 +57,16 @@ export function cacheTable(reportName: string, data: any[]): Promise<string> {
             dbAppender.appendBoolean(value);
           } else if (col.datatype === 'date') {
             if (typeof value === 'object' && value instanceof Date) {
-              // calculate days since epoch from value
+              // Use the Date's *local* Y/M/D components (which is what `parseDate`
+              // produced from Tally's "D-MMM-YY") and re-anchor them at UTC so the
+              // local-timezone offset doesn't shift the stored day backwards.
+              const utcMidnightMs = Date.UTC(
+                value.getFullYear(),
+                value.getMonth(),
+                value.getDate(),
+              );
               const daysSinceEpoch = Math.floor(
-                value.getTime() / (1000 * 60 * 60 * 24),
+                utcMidnightMs / (1000 * 60 * 60 * 24),
               );
               const _value = new duckdb.DuckDBDateValue(daysSinceEpoch);
               dbAppender.appendDate(_value);

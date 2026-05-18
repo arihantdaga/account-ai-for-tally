@@ -3,6 +3,14 @@ import type * as m from './models.mjs';
 import { postTallyXML } from './tally.mjs';
 import { utility } from './utility.mjs';
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function toTallyDate(isoDate: string): string {
+  // Convert YYYY-MM-DD to DD-MMM-YYYY (the format Tally accepts in cancel envelope DATE attribute)
+  const [year, month, day] = isoDate.split('-');
+  return `${day}-${MONTHS[parseInt(month, 10) - 1]}-${year}`;
+}
+
 const esc = utility.String.escapeHTML;
 
 function parsePushResponse(xmlResponse: string): m.ModelPushResponse {
@@ -246,13 +254,37 @@ ${entries}
 }
 
 function buildCancelVoucherXML(params: Record<string, any>): string {
-  const voucherType = params.voucherType ? `<VOUCHERTYPENAME>${esc(params.voucherType)}</VOUCHERTYPENAME>` : '';
-  const date = params.date ? `<DATE>${params.date.replace(/-/g, '')}</DATE>` : '';
-  return `<VOUCHER ACTION="Cancel" VCHTYPE="${esc(params.voucherType || '')}">
-${date}
-${voucherType}
-<MASTERID>${esc(params.masterId)}</MASTERID>
+  // MasterID is globally unique across voucher types. VoucherNumber is NOT unique
+  // (multiple voucher types can share the same number) and VCHTYPE is not honored
+  // as a filter — Tally will silently cancel the wrong voucher if we use VoucherNumber.
+  const date = toTallyDate(params.date);
+  const voucherType = esc(params.voucherType || '');
+  const masterId = esc(params.masterId || '');
+  return `<VOUCHER DATE="${date}" TAGNAME="MasterID" TAGVALUE="${masterId}" ACTION="Cancel" VCHTYPE="${voucherType}">
+<NARRATION>Cancelled via API</NARRATION>
 </VOUCHER>`;
+}
+
+function buildCancelEnvelope(companyName: string | undefined, voucherXML: string): string {
+  const companyTag = companyName
+    ? `<SVCURRENTCOMPANY>${esc(companyName)}</SVCURRENTCOMPANY>`
+    : '';
+  return `<ENVELOPE>
+<HEADER>
+<VERSION>1</VERSION>
+<TALLYREQUEST>Import</TALLYREQUEST>
+<TYPE>Data</TYPE>
+<ID>Vouchers</ID>
+</HEADER>
+<BODY>
+<DESC>${companyTag}</DESC>
+<DATA>
+<TALLYMESSAGE>
+${voucherXML}
+</TALLYMESSAGE>
+</DATA>
+</BODY>
+</ENVELOPE>`;
 }
 
 // --- Main Handler ---
@@ -313,14 +345,30 @@ export async function handlePush(
       }
     }
 
-    const reportName = voucherOperations.has(operation)
-      ? 'Vouchers'
-      : 'All Masters';
     const targetCompany = params.targetCompany || undefined;
     const innerXML = builder(params);
-    const fullXML = buildImportEnvelope(targetCompany, reportName, innerXML);
+    let fullXML: string;
+    if (operation === 'cancel-voucher') {
+      fullXML = buildCancelEnvelope(targetCompany, innerXML);
+    } else {
+      const reportName = voucherOperations.has(operation) ? 'Vouchers' : 'All Masters';
+      fullXML = buildImportEnvelope(targetCompany, reportName, innerXML);
+    }
     const response = await postTallyXML(fullXML);
-    return parsePushResponse(response);
+    const parsed = parsePushResponse(response);
+    // For cancel-voucher, Tally reports successful cancellation as ALTERED=1
+    // (not CANCELLED=1, which is reserved for "create cancelled voucher" flows).
+    // Surface this to the user as "cancelled" since that matches their intent.
+    if (operation === 'cancel-voucher' && parsed.success && parsed.altered) {
+      return {
+        success: true,
+        cancelled: parsed.altered,
+        created: 0,
+        altered: 0,
+        deleted: 0,
+      };
+    }
+    return parsed;
   } catch (err: any) {
     return { success: false, error: err?.message || 'Push operation failed' };
   }

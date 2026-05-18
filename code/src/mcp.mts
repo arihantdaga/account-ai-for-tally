@@ -503,7 +503,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-item-account',
     {
       title: 'Stock Item Account',
-      description: `Fetch detailed stock item account statement (voucher-level inventory movements) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, quantity (positive=inward, negative=outward), amount (negative=debit, positive=credit), narration, tracking_number, voucher_category, master_id. Note: rows with tracking_number values may have duplicates from Receipt Note/Delivery Note tracking — aggregate by tracking_number and voucher_category to deduplicate. Use list-master with collection=stockitem to validate the item name. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch detailed stock item account statement (voucher-level inventory movements) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, quantity (positive=inward, negative=outward), amount (negative=debit, positive=credit), narration, tracking_number, voucher_category, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Note: rows with tracking_number values may have duplicates from Receipt Note/Delivery Note tracking — aggregate by tracking_number and voucher_category to deduplicate. Use list-master with collection=stockitem to validate the item name. Result cached in DuckDB table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -912,12 +912,12 @@ export async function registerMcpServer(): Promise<McpServer> {
     {
       title: 'Cancel Voucher',
       description:
-        'Cancel (reverse) a voucher in Tally. Requires the master_id, voucher type, and date — get these from ledger-account or stock-item-account tool results. Cancellation creates a reversal entry; the original voucher is marked cancelled but not deleted.',
+        'Cancels a voucher in Tally Prime by marking it as cancelled — the voucher is preserved in Tally (audit trail) but excluded from all reports and ledger statements. Uses MasterID for unambiguous identification (voucher numbers are NOT unique across voucher types; a Sales and a Journal voucher can both be numbered "1"). Get the master_id, voucher type, and date from the ledger-account or stock-item-account tool output — DO NOT guess these or reuse stale cached values. On success, returns { success: true, cancelled: 1 }.',
       inputSchema: {
         targetCompany: z.string().optional().describe('optional company name'),
-        masterId: z.string().describe('master ID of the voucher to cancel'),
-        voucherType: z.string().describe('voucher type e.g. Sales, Purchase, Payment, Receipt, Journal'),
-        date: z.string().describe('voucher date in YYYY-MM-DD format'),
+        masterId: z.string().describe('master ID of the voucher to cancel (globally unique). MUST come from the master_id field in ledger-account or stock-item-account output for this same voucher.'),
+        voucherType: z.string().describe('voucher type, must match the voucher_type field from ledger-account output exactly e.g. Sales, Purchase, Payment, Receipt, Journal'),
+        date: z.string().describe('voucher date in YYYY-MM-DD format, must match the date field from ledger-account output for this voucher'),
       },
       annotations: {
         readOnlyHint: false,
