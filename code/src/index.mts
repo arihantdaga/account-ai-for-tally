@@ -2,9 +2,7 @@ import dotenv from 'dotenv';
 
 dotenv.config({ override: true, quiet: true });
 
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { registerMcpServer } from './mcp.mjs';
+import { startMcpStdio } from './mcp-stdio.mjs';
 
-const mcpServer = await registerMcpServer();
-const transport = new StdioServerTransport(); // Start receiving messages on stdin and sending messages on stdout
-await mcpServer.connect(transport); // Connect to the MCP server
+// Backward-compatible pure MCP stdio entry point (`node dist/index.mjs`).
+await startMcpStdio();

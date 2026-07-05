@@ -17,10 +17,10 @@
     "check": "biome check --write src/",
     "pretest": "npm run build:embeds",
     "test": "vitest run",
-    "build:binary": "npm run build:embeds && bun build src/index.mts --compile --outfile dist-bin/tally-mcp",
-    "build:binary:win": "npm run build:embeds && bun build src/index.mts --compile --target=bun-windows-x64 --outfile dist-bin/tally-mcp-win-x64.exe",
-    "build:binary:mac-arm": "npm run build:embeds && bun build src/index.mts --compile --target=bun-darwin-arm64 --outfile dist-bin/tally-mcp-mac-arm64",
-    "build:binary:mac-x64": "npm run build:embeds && bun build src/index.mts --compile --target=bun-darwin-x64 --outfile dist-bin/tally-mcp-mac-x64",
+    "build:binary": "npm run build:embeds && bun build src/main.mts --compile --outfile dist-bin/tally-mcp",
+    "build:binary:win": "npm run build:embeds && bun build src/main.mts --compile --target=bun-windows-x64 --outfile dist-bin/tally-mcp-win-x64.exe",
+    "build:binary:mac-arm": "npm run build:embeds && bun build src/main.mts --compile --target=bun-darwin-arm64 --outfile dist-bin/tally-mcp-mac-arm64",
+    "build:binary:mac-x64": "npm run build:embeds && bun build src/main.mts --compile --target=bun-darwin-x64 --outfile dist-bin/tally-mcp-mac-x64",
     "build:binary:all": "npm run build:binary:win && npm run build:binary:mac-arm && npm run build:binary:mac-x64"
   },
   "repository": {
