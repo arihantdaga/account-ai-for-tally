@@ -128,11 +128,11 @@ export async function pingCompanies(
     return { ok: true, companies: parseCompanyNames(resp) };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // Friendlier message for the most common failure.
-    if (/ECONNREFUSED/.test(msg)) {
+    // Friendlier message for the common "can't reach it" failures.
+    if (/ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|ETIMEDOUT|timed out/i.test(msg)) {
       return {
         ok: false,
-        error: `Could not connect to Tally at ${host}:${port}. Is Tally running with its gateway (Server) on this port?`,
+        error: `Could not connect to Tally at ${host}:${port}. Is Tally running with its gateway (Server) on this port, and reachable from this machine?`,
       };
     }
     return { ok: false, error: msg };
