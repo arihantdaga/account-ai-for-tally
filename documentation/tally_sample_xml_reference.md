@@ -114,6 +114,34 @@ To alter an existing ledger in Tally, change the tag as follows:
 <Ledger NAME="Customer ABC" Action="Alter">
 ```
 
+### Ledger Opening Balance
+
+> ✅ **Implementation note** (added by this repo — verified against a live Tally, not from the official sample-xml page)
+>
+> The official sample-xml page lists `<OPENINGBALANCE>` only for **stock items**, but a **ledger** opening balance is also settable via the same XML API. We tested it end-to-end against a real company (both on `Action="Create"` and `Action="Alter"`).
+>
+> Format: `<OPENINGBALANCE>{amount} Dr</OPENINGBALANCE>` or `... Cr</OPENINGBALANCE>` (e.g. `1500.00 Dr`). An optional `DATE="YYYYMMDD"` attribute is accepted (defaults to the beginning-of-books date). Sending only `<OPENINGBALANCE>` on an Alter returns `<ALTERED>1</ALTERED>` and leaves every other field untouched.
+>
+> **Sign convention on read-back:** when you export a ledger's `OpeningBalance`, Tally returns **Debit as negative** and **Credit as positive** (e.g. `1500 Dr` → `-1500.00`, `999 Cr` → `999.00`). This matches the Dr/Cr handling already used in `code/pull/*.xml`.
+>
+> Create with opening balance:
+> ```xml
+> <LEDGER Action="Create">
+>   <NAME>Customer ABC</NAME>
+>   <PARENT>Sundry Debtors</PARENT>
+>   <OPENINGBALANCE>1500.00 Dr</OPENINGBALANCE>
+> </LEDGER>
+> ```
+>
+> Alter only the opening balance of an existing ledger:
+> ```xml
+> <LEDGER NAME="Customer ABC" Action="Alter">
+>   <OPENINGBALANCE>2750.50 Dr</OPENINGBALANCE>
+> </LEDGER>
+> ```
+>
+> See `code/src/push.mts` (`buildOpeningBalanceXML`, `buildUpdateLedgerXML`) and the `create-ledger` / `update-ledger` MCP tools.
+
 ### Guidelines
 
 - Use Tally Connector available in TallyPrime Developer for sending XML requests and receiving responses

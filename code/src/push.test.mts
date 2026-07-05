@@ -81,6 +81,112 @@ describe('buildCreateLedgerXML (via handlePush)', () => {
     const xml = await callAndCapture('create-ledger', { name: 'A & B <Corp>' });
     expect(xml).toContain('<NAME>A &amp; B &lt;Corp&gt;</NAME>');
   });
+
+  it('should include opening balance with default Dr type', async () => {
+    const xml = await callAndCapture('create-ledger', {
+      name: 'Cash',
+      parent: 'Current Assets',
+      openingBalance: 1500,
+    });
+    expect(xml).toContain('<OPENINGBALANCE>1500 Dr</OPENINGBALANCE>');
+  });
+
+  it('should include opening balance with explicit Cr type', async () => {
+    const xml = await callAndCapture('create-ledger', {
+      name: 'Vendor',
+      parent: 'Sundry Creditors',
+      openingBalance: 999,
+      openingBalanceType: 'Cr',
+    });
+    expect(xml).toContain('<OPENINGBALANCE>999 Cr</OPENINGBALANCE>');
+  });
+
+  it('should use the magnitude for a negative opening balance', async () => {
+    const xml = await callAndCapture('create-ledger', {
+      name: 'Cash',
+      openingBalance: -2750.5,
+      openingBalanceType: 'Dr',
+    });
+    expect(xml).toContain('<OPENINGBALANCE>2750.5 Dr</OPENINGBALANCE>');
+  });
+
+  it('should omit opening balance when not provided', async () => {
+    const xml = await callAndCapture('create-ledger', { name: 'Cash', parent: 'Current Assets' });
+    expect(xml).not.toContain('<OPENINGBALANCE>');
+  });
+});
+
+describe('buildUpdateLedgerXML (via handlePush)', () => {
+  it('should use Action="Alter" with NAME as attribute', async () => {
+    const xml = await callAndCapture(
+      'update-ledger',
+      { ledgerName: 'Cash', openingBalance: 500 },
+      ALTER_RESPONSE,
+    );
+    expect(xml).toMatch(/<LEDGER\s+NAME="Cash"\s+Action="Alter">/);
+    // Alter should NOT re-declare NAME as a child element (avoids accidental rename)
+    expect(xml).not.toContain('<NAME>Cash</NAME>');
+  });
+
+  it('should set opening balance with Dr/Cr type', async () => {
+    const drXml = await callAndCapture(
+      'update-ledger',
+      { ledgerName: 'Cash', openingBalance: 2750.5, openingBalanceType: 'Dr' },
+      ALTER_RESPONSE,
+    );
+    expect(drXml).toContain('<OPENINGBALANCE>2750.5 Dr</OPENINGBALANCE>');
+
+    const crXml = await callAndCapture(
+      'update-ledger',
+      { ledgerName: 'Loan', openingBalance: 10000, openingBalanceType: 'Cr' },
+      ALTER_RESPONSE,
+    );
+    expect(crXml).toContain('<OPENINGBALANCE>10000 Cr</OPENINGBALANCE>');
+  });
+
+  it('should allow clearing opening balance with 0', async () => {
+    const xml = await callAndCapture(
+      'update-ledger',
+      { ledgerName: 'Cash', openingBalance: 0 },
+      ALTER_RESPONSE,
+    );
+    expect(xml).toContain('<OPENINGBALANCE>0 Dr</OPENINGBALANCE>');
+  });
+
+  it('should update other master fields when provided', async () => {
+    const xml = await callAndCapture(
+      'update-ledger',
+      {
+        ledgerName: 'Vendor',
+        parent: 'Sundry Creditors',
+        gstin: '29ABCDE1234F1Z5',
+        mobile: '9876543210',
+      },
+      ALTER_RESPONSE,
+    );
+    expect(xml).toContain('<PARENT>Sundry Creditors</PARENT>');
+    expect(xml).toContain('<PARTYGSTIN>29ABCDE1234F1Z5</PARTYGSTIN>');
+    expect(xml).toContain('<LEDGERMOBILE>9876543210</LEDGERMOBILE>');
+  });
+
+  it('should HTML-escape the ledger name attribute', async () => {
+    const xml = await callAndCapture(
+      'update-ledger',
+      { ledgerName: 'A & B', openingBalance: 100 },
+      ALTER_RESPONSE,
+    );
+    expect(xml).toContain('NAME="A &amp; B"');
+  });
+
+  it('should return altered=1 on success', async () => {
+    mockedPostTallyXML.mockResolvedValueOnce(ALTER_RESPONSE);
+    const result = await handlePush('update-ledger', {
+      ledgerName: 'Cash',
+      openingBalance: 500,
+    });
+    expect(result.success).toBe(true);
+    expect(result.altered).toBe(1);
+  });
 });
 
 describe('buildDeleteLedgerXML (via handlePush)', () => {
@@ -300,25 +406,28 @@ describe('buildCancelVoucherXML (via handlePush)', () => {
     }, CANCEL_RESPONSE);
     expect(xml).toContain('ACTION="Cancel"');
     expect(xml).toContain('VCHTYPE="Sales"');
-    expect(xml).toContain('<MASTERID>12345</MASTERID>');
+    // Vouchers are identified by MasterID (globally unique) via TAGNAME/TAGVALUE,
+    // not VoucherNumber, which is ambiguous across voucher types.
+    expect(xml).toContain('TAGNAME="MasterID"');
+    expect(xml).toContain('TAGVALUE="12345"');
   });
 
-  it('should convert date from YYYY-MM-DD to YYYYMMDD', async () => {
+  it('should format the cancel date as DD-MMM-YYYY in the DATE attribute', async () => {
     const xml = await callAndCapture('cancel-voucher', {
       voucherType: 'Sales',
       masterId: '12345',
       date: '2024-03-15',
     }, CANCEL_RESPONSE);
-    expect(xml).toContain('<DATE>20240315</DATE>');
+    expect(xml).toContain('DATE="15-Mar-2024"');
   });
 
-  it('should include VOUCHERTYPENAME element', async () => {
+  it('should carry the voucher type in the VCHTYPE attribute', async () => {
     const xml = await callAndCapture('cancel-voucher', {
       voucherType: 'Purchase',
       masterId: '67890',
       date: '2024-06-01',
     }, CANCEL_RESPONSE);
-    expect(xml).toContain('<VOUCHERTYPENAME>Purchase</VOUCHERTYPENAME>');
+    expect(xml).toContain('VCHTYPE="Purchase"');
   });
 });
 

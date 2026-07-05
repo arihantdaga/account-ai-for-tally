@@ -577,6 +577,18 @@ export async function registerMcpServer(): Promise<McpServer> {
         state: z.string().optional().describe('state name for GST'),
         mobile: z.string().optional().describe('mobile number'),
         gstin: z.string().optional().describe('GSTIN number'),
+        openingBalance: z
+          .number()
+          .optional()
+          .describe(
+            'opening balance amount as a positive number (magnitude). Combine with openingBalanceType for Dr/Cr. Omit for no opening balance.',
+          ),
+        openingBalanceType: z
+          .enum(['Dr', 'Cr'])
+          .optional()
+          .describe(
+            "'Dr' (debit) or 'Cr' (credit). Defaults to Dr. Use Dr for assets/debtors/expenses, Cr for liabilities/creditors/income/capital.",
+          ),
       },
       annotations: { readOnlyHint: false, openWorldHint: false },
     },
@@ -587,6 +599,50 @@ export async function registerMcpServer(): Promise<McpServer> {
           isError: true,
           content: [
             { type: 'text', text: resp.error || 'Failed to create ledger' },
+          ],
+        };
+      }
+      return { content: [{ type: 'text', text: JSON.stringify(resp) }] };
+    },
+  );
+
+  mcpServer.registerTool(
+    'update-ledger',
+    {
+      title: 'Update Ledger',
+      description:
+        "Alter an existing ledger in Tally. Its main use is setting or correcting a ledger's opening balance (the balance carried forward as of the start of the books), but it can also update the parent group, address, state, mobile, or GSTIN. Only the fields you pass are changed; everything else is left intact. Validate the exact ledger name with list-master (collection=ledger) first. Note: opening balance is meaningful for balance-sheet ledgers (assets/liabilities); for revenue ledgers Tally may ignore it.",
+      inputSchema: {
+        targetCompany: z.string().optional().describe('optional company name'),
+        ledgerName: z.string().describe('exact name of the ledger to update'),
+        openingBalance: z
+          .number()
+          .optional()
+          .describe(
+            'new opening balance as a positive number (magnitude). Combine with openingBalanceType for Dr/Cr. Pass 0 to clear the opening balance.',
+          ),
+        openingBalanceType: z
+          .enum(['Dr', 'Cr'])
+          .optional()
+          .describe(
+            "'Dr' (debit) or 'Cr' (credit) for the opening balance. Defaults to Dr. Use Dr for assets/debtors/expenses, Cr for liabilities/creditors/income/capital.",
+          ),
+        parent: z.string().optional().describe('new parent group name'),
+        address: z.string().optional().describe('address of the party'),
+        country: z.string().optional().describe('country name'),
+        state: z.string().optional().describe('state name for GST'),
+        mobile: z.string().optional().describe('mobile number'),
+        gstin: z.string().optional().describe('GSTIN number'),
+      },
+      annotations: { readOnlyHint: false, openWorldHint: false },
+    },
+    async (args) => {
+      const resp = await handlePush('update-ledger', args);
+      if (!resp.success) {
+        return {
+          isError: true,
+          content: [
+            { type: 'text', text: resp.error || 'Failed to update ledger' },
           ],
         };
       }

@@ -1,5 +1,13 @@
 # Release History
 
+### Version: v7 [unreleased]
+
+Added:
+* Ledger opening balance support. The **create-ledger** tool now accepts `openingBalance` + `openingBalanceType` (Dr/Cr), and a new **update-ledger** tool alters an existing ledger — primarily to set or correct its opening balance, but it can also change parent group, address, state, mobile or GSTIN. Verified end-to-end against a live Tally (Create and Alter both supported via the `<OPENINGBALANCE>{amount} Dr|Cr</OPENINGBALANCE>` tag).
+
+Fixed:
+* Stale unit tests for **cancel-voucher** (still asserted the pre-MasterID VoucherNumber/`YYYYMMDD` shape) updated to match the current MasterID + `DD-MMM-YYYY` builder.
+
 ### Version: v6 [11-Nov-2025]
 
 Added:

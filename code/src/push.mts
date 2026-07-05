@@ -80,6 +80,21 @@ ${tallyMessageContent}
 
 // --- Master XML Builders ---
 
+// Tally stores a ledger opening balance as a signed amount where Debit is
+// negative and Credit is positive, but the import XML expects the human form
+// "<magnitude> Dr" / "<magnitude> Cr". We accept a positive magnitude plus an
+// explicit Dr/Cr type (default Dr, the common case for assets/debtors/expenses).
+// A value of 0 is honoured (it clears an existing opening balance).
+function buildOpeningBalanceXML(params: Record<string, any>): string {
+  const raw = params.openingBalance;
+  if (raw === undefined || raw === null || raw === '') return '';
+  const num = Number(raw);
+  if (Number.isNaN(num)) return '';
+  const magnitude = Math.abs(num);
+  const type = /^c/i.test(String(params.openingBalanceType ?? '')) ? 'Cr' : 'Dr';
+  return `<OPENINGBALANCE>${magnitude} ${type}</OPENINGBALANCE>`;
+}
+
 function buildCreateLedgerXML(params: Record<string, any>): string {
   const name = esc(params.name);
   const parent = params.parent ? `<PARENT>${esc(params.parent)}</PARENT>` : '';
@@ -98,10 +113,36 @@ function buildCreateLedgerXML(params: Record<string, any>): string {
   const gstin = params.gstin
     ? `<PARTYGSTIN>${esc(params.gstin)}</PARTYGSTIN>`
     : '';
+  const openingBalance = buildOpeningBalanceXML(params);
 
   return `<LEDGER Action="Create">
 <NAME>${name}</NAME>
-${parent}${address}${country}${state}${mobile}${gstin}
+${parent}${address}${country}${state}${mobile}${gstin}${openingBalance}
+</LEDGER>`;
+}
+
+// Alter an existing ledger. Identified by the NAME attribute; every child tag is
+// optional so callers can change just the opening balance (the primary use case)
+// or any subset of the master fields. Confirmed against a live Tally: sending
+// only <OPENINGBALANCE> returns ALTERED=1 and leaves all other fields intact.
+function buildUpdateLedgerXML(params: Record<string, any>): string {
+  const elements: string[] = [];
+  if (params.parent) elements.push(`<PARENT>${esc(params.parent)}</PARENT>`);
+  if (params.address)
+    elements.push(`<ADDRESS>${esc(params.address)}</ADDRESS>`);
+  if (params.country)
+    elements.push(`<COUNTRYOFRESIDENCE>${esc(params.country)}</COUNTRYOFRESIDENCE>`);
+  if (params.state)
+    elements.push(`<LEDSTATENAME>${esc(params.state)}</LEDSTATENAME>`);
+  if (params.mobile)
+    elements.push(`<LEDGERMOBILE>${esc(params.mobile)}</LEDGERMOBILE>`);
+  if (params.gstin)
+    elements.push(`<PARTYGSTIN>${esc(params.gstin)}</PARTYGSTIN>`);
+  const openingBalance = buildOpeningBalanceXML(params);
+  if (openingBalance) elements.push(openingBalance);
+
+  return `<LEDGER NAME="${esc(params.ledgerName)}" Action="Alter">
+${elements.join('\n')}
 </LEDGER>`;
 }
 
@@ -291,6 +332,7 @@ ${voucherXML}
 
 const masterOperations = new Set([
   'create-ledger',
+  'update-ledger',
   'delete-ledger',
   'create-group',
   'update-group',
@@ -305,6 +347,7 @@ const voucherOperations = new Set(['create-voucher', 'cancel-voucher']);
 
 const xmlBuilders: Record<string, (params: Record<string, any>) => string> = {
   'create-ledger': buildCreateLedgerXML,
+  'update-ledger': buildUpdateLedgerXML,
   'delete-ledger': buildDeleteLedgerXML,
   'create-group': buildCreateGroupXML,
   'update-group': buildUpdateGroupXML,
