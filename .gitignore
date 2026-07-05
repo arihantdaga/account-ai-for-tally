@@ -1,0 +1,7 @@
+.env
+dist/
+dist-bin/
+node_modules/
+src/generated/
+.DS_Store
+Todo.md

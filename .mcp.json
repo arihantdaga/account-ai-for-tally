@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tally": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["code/dist/main.mjs", "--mcp"]
+    }
+  }
+}

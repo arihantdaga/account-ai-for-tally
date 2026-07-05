@@ -1,0 +1,52 @@
+{
+  "name": "account-ai-for-tally",
+  "version": "1.0.0",
+  "description": "Account AI for Tally — a Model Context Protocol (MCP) server that connects Claude and other AI assistants to Tally Prime accounting software.",
+  "main": "dist/main.mjs",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build:embeds": "node scripts/build-embeds.mjs",
+    "prebuild": "npm run build:embeds",
+    "build": "tsc",
+    "pretypecheck": "npm run build:embeds",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write src/",
+    "lint": "biome check src/",
+    "check": "biome check --write src/",
+    "pretest": "npm run build:embeds",
+    "test": "vitest run",
+    "build:binary": "npm run build:embeds && bun build src/main.mts --compile --outfile dist-bin/account-ai-for-tally",
+    "build:binary:win": "npm run build:embeds && bun build src/main.mts --compile --target=bun-windows-x64 --outfile dist-bin/account-ai-for-tally-win-x64.exe",
+    "build:binary:mac-arm": "npm run build:embeds && bun build src/main.mts --compile --target=bun-darwin-arm64 --outfile dist-bin/account-ai-for-tally-mac-arm64",
+    "build:binary:mac-x64": "npm run build:embeds && bun build src/main.mts --compile --target=bun-darwin-x64 --outfile dist-bin/account-ai-for-tally-mac-x64",
+    "build:binary:all": "npm run build:binary:win && npm run build:binary:mac-arm && npm run build:binary:mac-x64"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arihantdaga/account-ai-for-tally.git"
+  },
+  "author": "Arihant Daga",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arihantdaga/account-ai-for-tally/issues"
+  },
+  "homepage": "https://github.com/arihantdaga/account-ai-for-tally#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.18.2",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "fast-xml-parser": "5.2.5",
+    "nunjucks": "3.2.4",
+    "sql.js": "^1.14.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.8",
+    "@types/express": "5.0.3",
+    "@types/node": "24.2.1",
+    "@types/nunjucks": "3.2.6",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.0"
+  }
+}
