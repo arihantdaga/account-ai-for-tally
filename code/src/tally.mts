@@ -1,12 +1,11 @@
 import http from 'node:http';
 import { XMLParser } from 'fast-xml-parser';
 import nunjucks from 'nunjucks';
+import { getTallyConnection } from './config.mjs';
 import { pullConfig, pullTemplates } from './generated/embedded.mjs';
 import type * as m from './models.mjs';
 import { utility } from './utility.mjs';
 
-const tally_host = process.env.TALLY_HOST || 'localhost';
-const tally_port = parseInt(process.env.TALLY_PORT || '9000'); // default to 9000 XML port of Tally
 // Report definitions + XML templates are inlined at build time (see
 // scripts/build-embeds.mjs) so the same code path works under node and inside
 // the single compiled binary (which has no filesystem next to it).
@@ -174,6 +173,9 @@ function sendTally(
 export function postTallyXML(xml: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     try {
+      // Read the connection live (file → env → default) so a change made in the
+      // control panel takes effect immediately, without restarting Claude.
+      const { host: tally_host, port: tally_port } = getTallyConnection();
       const req = http.request(
         {
           hostname: tally_host,
