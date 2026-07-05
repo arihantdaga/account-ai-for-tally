@@ -54,13 +54,27 @@ Grab the file for your OS from [**Releases**](../../releases) and put it somewhe
 
 ### 3️⃣ Connect Claude Desktop
 
-Open Claude Desktop → **Settings → Developer → Edit Config** (this opens `claude_desktop_config.json`) and add a `tally` entry:
+**The easy way — double‑click the binary.** Running the file with no arguments opens a small **setup page** in your browser (a local control panel at `http://127.0.0.1:4321`, reachable only from your PC):
+
+1. **Double‑click** the downloaded binary (on macOS: right‑click → **Open** the first time).
+2. In the page that opens, set your **Tally host** (`localhost`, or the Tally PC's LAN IP) and **Port** (`9000`), optionally a **Default company**.
+3. Click **Test connection** — you should see your company (e.g. *Arihant Daga EXP*) listed.
+4. Click **Connect to Claude Desktop**. This safely adds a `tally` entry to `claude_desktop_config.json` (backing up any existing file to `…json.bak`) and points it at this binary with `"args": ["--mcp"]`.
+5. **Restart Claude Desktop.**
+
+Your settings are stored in `~/.tally-mcp/config.json` and read **live** on every request, so you can change the host/port in the panel and Claude picks it up without editing any JSON.
+
+<details>
+<summary><b>Prefer to edit the JSON yourself?</b></summary>
+
+Open Claude Desktop → **Settings → Developer → Edit Config** and add a `tally` entry. Note the **`"args": ["--mcp"]`** — the binary needs that flag to run in MCP mode (with no args it opens the control panel):
 
 ```json
 {
   "mcpServers": {
     "tally": {
       "command": "C:\\Tools\\tally-mcp-win-x64.exe",
+      "args": ["--mcp"],
       "env": { "TALLY_HOST": "localhost", "TALLY_PORT": "9000" }
     }
   }
@@ -68,11 +82,13 @@ Open Claude Desktop → **Settings → Developer → Edit Config** (this opens `
 ```
 
 - `command` → the **full path** to the binary you downloaded.
-- `TALLY_HOST` → `localhost` (same PC) or the Tally PC's IP (LAN).
+- `TALLY_HOST` → `localhost` (same PC) or the Tally PC's IP (LAN). Values saved via the control panel (`~/.tally-mcp/config.json`) take precedence over these `env` values.
 
 Config file location:
 - 🪟 Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - 🍎 macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+</details>
 
 **Restart Claude Desktop**, then try:
 
@@ -100,11 +116,14 @@ claude mcp add tally \
   "mcpServers": {
     "tally": {
       "command": "/absolute/path/to/tally-mcp",
+      "args": ["--mcp"],
       "env": { "TALLY_HOST": "localhost", "TALLY_PORT": "9000" }
     }
   }
 }
 ```
+
+> ℹ️ Pass **`--mcp`** so the binary runs the MCP stdio server. Launched with **no arguments** it instead opens the local setup control panel (see Quick Start).
 
 The server speaks MCP over **stdio**, so any MCP‑compatible agent can drive it. Tip: have the agent call `list-master` to validate exact ledger/group names before writing.
 
@@ -131,10 +150,12 @@ npm ci                 # install dependencies
 
 # ── Run from source (Node) ──────────────────────────────
 npm run build          # compile TypeScript -> dist/
-node dist/index.mjs    # start the MCP server (reads TALLY_HOST/TALLY_PORT)
+node dist/main.mjs         # open the local control panel (double-click mode)
+node dist/main.mjs --mcp   # start the MCP server (reads config / TALLY_HOST/TALLY_PORT)
+node dist/index.mjs        # MCP server (backward-compatible entry point)
 
 # ── Tests & checks ──────────────────────────────────────
-npm test               # unit tests (78)
+npm test               # unit tests
 npm run typecheck      # tsc --noEmit
 
 # ── Single binary (Bun) ─────────────────────────────────
