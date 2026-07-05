@@ -7,12 +7,21 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "build:embeds": "node scripts/build-embeds.mjs",
+    "prebuild": "npm run build:embeds",
     "build": "tsc",
+    "pretypecheck": "npm run build:embeds",
     "typecheck": "tsc --noEmit",
     "format": "biome format --write src/",
     "lint": "biome check src/",
     "check": "biome check --write src/",
-    "test": "vitest run"
+    "pretest": "npm run build:embeds",
+    "test": "vitest run",
+    "build:binary": "npm run build:embeds && bun build src/index.mts --compile --outfile dist-bin/tally-mcp",
+    "build:binary:win": "npm run build:embeds && bun build src/index.mts --compile --target=bun-windows-x64 --outfile dist-bin/tally-mcp-win-x64.exe",
+    "build:binary:mac-arm": "npm run build:embeds && bun build src/index.mts --compile --target=bun-darwin-arm64 --outfile dist-bin/tally-mcp-mac-arm64",
+    "build:binary:mac-x64": "npm run build:embeds && bun build src/index.mts --compile --target=bun-darwin-x64 --outfile dist-bin/tally-mcp-mac-x64",
+    "build:binary:all": "npm run build:binary:win && npm run build:binary:mac-arm && npm run build:binary:mac-x64"
   },
   "repository": {
     "type": "git",
@@ -25,12 +34,12 @@
   },
   "homepage": "https://github.com/dhananjay1405/tally-mcp-server#readme",
   "dependencies": {
-    "@duckdb/node-api": "1.4.1-r.4",
     "@modelcontextprotocol/sdk": "1.18.2",
     "dotenv": "17.2.3",
     "express": "5.1.0",
     "fast-xml-parser": "5.2.5",
-    "nunjucks": "3.2.4"
+    "nunjucks": "3.2.4",
+    "sql.js": "^1.14.1"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",

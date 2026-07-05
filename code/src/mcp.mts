@@ -15,11 +15,11 @@ export async function registerMcpServer(): Promise<McpServer> {
     'query-database',
     {
       title: 'Query Database',
-      description: `Run SQL queries on cached Tally data. Other tools (trial-balance, ledger-account, etc.) cache their results in temporary DuckDB tables and return a tableID. Use this tool to query those tables with standard SQL for aggregation, filtering, sorting, and joins. Tables auto-expire after 15 minutes. Returns tab-separated output.`,
+      description: `Run SQL queries on cached Tally data. Other tools (trial-balance, ledger-account, etc.) cache their results in temporary in-memory SQL tables and return a tableID. Use this tool to query those tables with standard SQL (SQLite dialect) for aggregation, filtering, sorting, and joins. Dates are stored as 'YYYY-MM-DD' text — use SQLite date functions (date(), strftime()) rather than DuckDB-style date_trunc. Tables auto-expire after 15 minutes. Returns tab-separated output.`,
       inputSchema: {
         sql: z
           .string()
-          .describe('SQL query to execute on DuckDB in-memory database'),
+          .describe('SQL query to execute on the in-memory SQLite database (SQLite dialect)'),
       },
       annotations: {
         readOnlyHint: true,
@@ -93,7 +93,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'chart-of-accounts',
     {
       title: 'Chart of Accounts',
-      description: `Fetch the full chart of accounts (group hierarchy) from Tally. Returns fields: group_name, group_parent, bs_pl (BS=Balance Sheet, PL=Profit & Loss), dr_cr (D=Debit, C=Credit), affects_gross_profit (Y/N). The group/parent columns form a tree in flat format. Fetch this before using trial-balance, profit-loss, or balance-sheet to understand the GL structure. Result is cached in a DuckDB table — use query-database with the returned tableID for analysis.`,
+      description: `Fetch the full chart of accounts (group hierarchy) from Tally. Returns fields: group_name, group_parent, bs_pl (BS=Balance Sheet, PL=Profit & Loss), dr_cr (D=Debit, C=Credit), affects_gross_profit (Y/N). The group/parent columns form a tree in flat format. Fetch this before using trial-balance, profit-loss, or balance-sheet to understand the GL structure. Result is cached in an in-memory SQL table — use query-database with the returned tableID for analysis.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -133,7 +133,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'trial-balance',
     {
       title: 'Trial Balance',
-      description: `Fetch trial balance for a date range. Returns fields: ledger_name, group_name, opening_balance, net_debit, net_credit, closing_balance. Tip: fetch chart-of-accounts first to understand group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch trial balance for a date range. Returns fields: ledger_name, group_name, opening_balance, net_debit, net_credit, closing_balance. Tip: fetch chart-of-accounts first to understand group hierarchy. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -178,7 +178,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'profit-loss',
     {
       title: 'Profit and Loss',
-      description: `Fetch Profit & Loss statement for a date range. Returns fields: ledger_name, group_name, amount. Negative amount = expense (debit), positive = income (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch Profit & Loss statement for a date range. Returns fields: ledger_name, group_name, amount. Negative amount = expense (debit), positive = income (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -223,7 +223,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'balance-sheet',
     {
       title: 'Balance Sheet',
-      description: `Fetch Balance Sheet as on a date. Returns fields: ledger_name, group_name, closing_balance. Negative closing_balance = asset (debit), positive = liability (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch Balance Sheet as on a date. Returns fields: ledger_name, group_name, closing_balance. Negative closing_balance = asset (debit), positive = liability (credit). Tip: fetch chart-of-accounts first for group hierarchy. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -264,7 +264,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-summary',
     {
       title: 'Stock Summary',
-      description: `Fetch inventory stock summary for a date range. Returns fields: name (stock item), parent (stock group), opening_quantity, opening_value, inward_quantity, inward_value, outward_quantity, outward_value, closing_quantity, closing_value. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch inventory stock summary for a date range. Returns fields: name (stock item), parent (stock group), opening_quantity, opening_value, inward_quantity, inward_value, outward_quantity, outward_value, closing_quantity, closing_value. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -401,7 +401,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'bills-outstanding',
     {
       title: 'Bills Outstanding',
-      description: `Fetch outstanding bills (receivable or payable) as on a date. Returns fields: bill_date, reference_number, outstanding_amount (negative=debit, positive=credit), party_name (ledger name), overdue_days. Use nature=receivable for money owed TO you, nature=payable for money you OWE. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch outstanding bills (receivable or payable) as on a date. Returns fields: bill_date, reference_number, outstanding_amount (negative=debit, positive=credit), party_name (ledger name), overdue_days. Use nature=receivable for money owed TO you, nature=payable for money you OWE. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -446,7 +446,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'ledger-account',
     {
       title: 'Ledger Account',
-      description: `Fetch detailed ledger account statement (voucher-level transactions) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, amount (negative=debit, positive=credit), narration, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Use list-master with collection=ledger to validate the ledger name. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch detailed ledger account statement (voucher-level transactions) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, amount (negative=debit, positive=credit), narration, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Use list-master with collection=ledger to validate the ledger name. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
@@ -503,7 +503,7 @@ export async function registerMcpServer(): Promise<McpServer> {
     'stock-item-account',
     {
       title: 'Stock Item Account',
-      description: `Fetch detailed stock item account statement (voucher-level inventory movements) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, quantity (positive=inward, negative=outward), amount (negative=debit, positive=credit), narration, tracking_number, voucher_category, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Note: rows with tracking_number values may have duplicates from Receipt Note/Delivery Note tracking — aggregate by tracking_number and voucher_category to deduplicate. Use list-master with collection=stockitem to validate the item name. Result cached in DuckDB table — use query-database with the returned tableID.`,
+      description: `Fetch detailed stock item account statement (voucher-level inventory movements) for a date range. Returns fields: date, voucher_type, voucher_number, party_ledger, quantity (positive=inward, negative=outward), amount (negative=debit, positive=credit), narration, tracking_number, voucher_category, master_id. The master_id uniquely identifies each voucher and can be used with cancel-voucher. Note: rows with tracking_number values may have duplicates from Receipt Note/Delivery Note tracking — aggregate by tracking_number and voucher_category to deduplicate. Use list-master with collection=stockitem to validate the item name. Result cached in an in-memory SQL table — use query-database with the returned tableID.`,
       inputSchema: {
         targetCompany: z
           .string()
