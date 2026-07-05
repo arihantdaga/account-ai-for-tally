@@ -4,6 +4,10 @@
 
 Added:
 * Ledger opening balance support. The **create-ledger** tool now accepts `openingBalance` + `openingBalanceType` (Dr/Cr), and a new **update-ledger** tool alters an existing ledger — primarily to set or correct its opening balance, but it can also change parent group, address, state, mobile or GSTIN. Verified end-to-end against a live Tally (Create and Alter both supported via the `<OPENINGBALANCE>{amount} Dr|Cr</OPENINGBALANCE>` tag).
+* **Single portable binary.** The server can now be compiled into one self-contained executable per OS (Windows/macOS) via Bun — no Node, npm, or native addons required. Report templates and the SQL engine are embedded at build time (`scripts/build-embeds.mjs`). See `npm run build:binary`.
+
+Changed:
+* Replaced the DuckDB in-memory cache engine (`@duckdb/node-api`, a native addon) with **sql.js** (SQLite compiled to WebAssembly). This removes the only native dependency so the whole server can be bundled into a single portable executable. Behaviour is preserved behind the same `cacheTable`/`executeSQL` interface; query dialect is now SQLite (dates stored as `YYYY-MM-DD` text). Benchmarked at real report sizes (hundreds–thousands of rows) the difference is sub-5 ms and dominated by Tally's network latency. New `database.test.mts` covers round-trip, aggregation, date/number formatting, header-on-empty, and NULL handling.
 
 Fixed:
 * Stale unit tests for **cancel-voucher** (still asserted the pre-MasterID VoucherNumber/`YYYYMMDD` shape) updated to match the current MasterID + `DD-MMM-YYYY` builder.

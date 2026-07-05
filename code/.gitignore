@@ -1,3 +1,6 @@
 node_modules/
 dist/*.mjs.map
 dist/
+# generated embeds (regenerated at build time)
+src/generated/
+dist-bin/

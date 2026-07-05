@@ -1,17 +1,17 @@
-import fs from 'node:fs';
 import http from 'node:http';
-import path from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
 import nunjucks from 'nunjucks';
+import { pullConfig, pullTemplates } from './generated/embedded.mjs';
 import type * as m from './models.mjs';
 import { utility } from './utility.mjs';
 
 const tally_host = process.env.TALLY_HOST || 'localhost';
 const tally_port = parseInt(process.env.TALLY_PORT || '9000'); // default to 9000 XML port of Tally
-const __dirname = import.meta.dirname;
-const lstPullReport: m.ModelPullReportInfo[] = JSON.parse(
-  fs.readFileSync(path.join(__dirname, '../pull/config.json'), 'utf-8'),
-)['reports'];
+// Report definitions + XML templates are inlined at build time (see
+// scripts/build-embeds.mjs) so the same code path works under node and inside
+// the single compiled binary (which has no filesystem next to it).
+const lstPullReport: m.ModelPullReportInfo[] =
+  pullConfig.reports as m.ModelPullReportInfo[];
 
 nunjucks.configure({
   tags: {
@@ -314,10 +314,11 @@ function extractReport(
         return data;
       };
 
-      let tmplXML = fs.readFileSync(
-        path.join(__dirname, `../pull/${reportConfig.name}.xml`),
-        'utf-8',
-      ); //load XML template
+      let tmplXML = pullTemplates[reportConfig.name]; //load embedded XML template
+      if (!tmplXML) {
+        retval.error = `Report template not found: ${reportConfig.name}`;
+        return resolve(retval);
+      }
       tmplXML = substituteTDLParameters(tmplXML, reportInputParams); //substitute angular bracket params with values
       const respContent = await sendTally(tmplXML, reportInputParams);
 
